@@ -17,7 +17,11 @@
   }
   .top { padding: 10px 12px 8px; text-align: center; border-bottom: 3px solid #000; }
   .date { font-size: 18px; font-weight: 700; }
-  .face { font-size: 22px; font-weight: 800; margin-top: 2px; color: #b5443a; }
+  .facerow { display:-webkit-box; display:flex; -webkit-box-align:center; align-items:center; -webkit-box-pack:center; justify-content:center; margin-top:4px; }
+  .facebtn { width:46px; height:46px; flex:0 0 auto; -webkit-box-flex:0; font-size:26px; font-weight:800; border:none; border-radius:10px; background:#1f5f8b; color:#fff; font-family:inherit; line-height:1; }
+  .facebtn:active { opacity:0.7; }
+  .facetap { -webkit-box-flex:1; flex:1; margin:0 8px; }
+  .face { font-size: 24px; font-weight: 800; color: #b5443a; }
   .face .label { font-size: 14px; color:#555; font-weight:600; }
 
   /* 合成傾斜（大きく） */
@@ -68,9 +72,15 @@
 </style>
 </head>
 <body>
-  <div class="top" id="faceArea">
+  <div class="top">
     <div class="date" id="date">----/--/--</div>
-    <div class="face"><span class="label">面：</span><span id="faceVal">タップで入力</span></div>
+    <div class="facerow">
+      <button class="facebtn" id="faceMinus">−</button>
+      <div class="facetap" id="faceArea">
+        <div class="face"><span class="label">面：</span><span id="faceVal">1面</span></div>
+      </div>
+      <button class="facebtn" id="facePlus">＋</button>
+    </div>
   </div>
 
   <div class="total">
@@ -118,7 +128,7 @@
   <div class="modal" id="modal">
     <div class="modal-box">
       <p>面番号を入力</p>
-      <input type="text" id="faceInput" placeholder="例：9面 / A-3" autocomplete="off">
+      <input type="text" id="faceInput" placeholder="例：3 または A-3" autocomplete="off">
       <div class="mbtns">
         <button class="cancel" id="mCancel">キャンセル</button>
         <button class="ok" id="mOk">決定</button>
@@ -267,19 +277,49 @@ holdBtn.onclick = function(){
   holdBtn.style.background = held ? '#b5443a' : '#1f5f8b';
 };
 
-/* 面番号 */
+/* 面番号 +/- */
+var faceNum = 1;           /* 数字の面番号 */
+var faceCustom = null;     /* 手入力された文字列。あれば優先 */
+var faceValEl = document.getElementById('faceVal');
+
+function showFace(){
+  if (faceCustom !== null) faceValEl.innerHTML = faceCustom;
+  else faceValEl.innerHTML = faceNum + '面';
+}
+showFace();
+
+document.getElementById('facePlus').onclick = function(){
+  faceCustom = null;        /* +/-を押したら数字モードに戻す */
+  faceNum = faceNum + 1;
+  if (faceNum > 99) faceNum = 99;
+  showFace();
+};
+document.getElementById('faceMinus').onclick = function(){
+  faceCustom = null;
+  faceNum = faceNum - 1;
+  if (faceNum < 1) faceNum = 1;
+  showFace();
+};
+
+/* タップで自由入力（任意） */
 var modal = document.getElementById('modal');
 var faceInput = document.getElementById('faceInput');
 document.getElementById('faceArea').onclick = function(){
-  var cur = document.getElementById('faceVal').innerHTML;
-  faceInput.value = (cur === 'タップで入力') ? '' : cur;
+  var cur = faceValEl.innerHTML;
+  faceInput.value = cur;
   modal.className = 'modal show';
   setTimeout(function(){ faceInput.focus(); }, 100);
 };
 document.getElementById('mOk').onclick = function(){
   var v = faceInput.value;
   if (v) v = v.replace(/^\s+|\s+$/g, '');
-  document.getElementById('faceVal').innerHTML = v || 'タップで入力';
+  if (v) {
+    /* 「3」や「3面」だけなら数字モードに取り込む。それ以外は自由入力として保持 */
+    var m = v.match(/^([0-9]+)面?$/);
+    if (m) { faceNum = parseInt(m[1], 10); if(faceNum<1)faceNum=1; if(faceNum>99)faceNum=99; faceCustom = null; }
+    else { faceCustom = v; }
+  }
+  showFace();
   modal.className = 'modal';
 };
 document.getElementById('mCancel').onclick = function(){ modal.className = 'modal'; };
