@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>傾斜計</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin:0; padding:0; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif;
+    background: #fff; color: #000;
+    display:-webkit-box; display:flex;
+    -webkit-box-orient:vertical; -webkit-box-direction:normal; flex-direction: column;
+    height: 100vh; overflow: hidden;
+    -webkit-user-select: none; user-select: none;
+  }
+  .top { padding: 10px 12px 8px; text-align: center; border-bottom: 3px solid #000; }
+  .date { font-size: 18px; font-weight: 700; }
+  .face { font-size: 22px; font-weight: 800; margin-top: 2px; color: #b5443a; }
+  .face .label { font-size: 14px; color:#555; font-weight:600; }
+
+  /* 合成傾斜（大きく） */
+  .total { padding: 10px 8px; text-align:center; border-bottom: 3px solid #000; }
+  .total .lab { font-size: 15px; font-weight:700; color:#333; }
+  .totalval { font-size: 15vw; font-weight: 800; line-height:1.0; }
+  .judge { font-size: 18px; font-weight:800; margin-top:4px; }
+  .judge.ok { color:#2e7d32; }
+  .judge.flat { color:#b5760a; }
+
+  /* 矢印エリア */
+  .arrowwrap { -webkit-box-flex:1; flex:1 1 auto; position: relative; display:-webkit-box; display:flex; -webkit-box-pack:center; justify-content:center; -webkit-box-align:center; align-items:center; border-bottom:3px solid #000; background:#f3f6f9; overflow:hidden; }
+  .compass { position:relative; width:60vw; height:60vw; max-width:260px; max-height:260px; }
+  .ring { position:absolute; top:0; left:0; right:0; bottom:0; border:3px solid #c9d2da; border-radius:50%; }
+  .lbl { position:absolute; font-size:14px; font-weight:700; color:#888; }
+  .lbl.up { top:4px; left:50%; margin-left:-14px; }
+  .lbl.dn { bottom:4px; left:50%; margin-left:-14px; }
+  .lbl.lf { left:6px; top:50%; margin-top:-10px; }
+  .lbl.rt { right:6px; top:50%; margin-top:-10px; }
+  .arrow { position:absolute; top:50%; left:50%; width:0; height:0; }
+  .arrowline { position:absolute; left:-4px; top:0; width:8px; background:#1f5f8b; border-radius:4px; -webkit-transform-origin:center top; transform-origin:center top; }
+  .arrowhead { position:absolute; left:-13px; width:0; height:0; border-left:13px solid transparent; border-right:13px solid transparent; border-top:20px solid #1f5f8b; }
+  .center-dot { position:absolute; top:50%; left:50%; width:14px; height:14px; margin:-7px 0 0 -7px; background:#1c2530; border-radius:50%; z-index:5; }
+  .flowtext { position:absolute; bottom:8px; left:0; right:0; text-align:center; font-size:15px; font-weight:800; color:#1f5f8b; }
+
+  /* 前後・左右の数値 */
+  .axes { display:-webkit-box; display:flex; }
+  .axis { -webkit-box-flex:1; flex:1; text-align:center; padding:10px 4px; }
+  .axis.divider { border-left:2px solid #ddd; }
+  .axis .alab { font-size:13px; font-weight:700; color:#555; }
+  .axis .aval { font-size:24px; font-weight:800; line-height:1.1; }
+  .axis .adir { font-size:14px; font-weight:700; color:#1f5f8b; }
+
+  .bar { display:-webkit-box; display:flex; padding: 7px; background: #eef1f4; }
+  .bar button { -webkit-box-flex:1; flex: 1; margin:0 4px; padding: 13px 4px; font-size: 15px; font-weight: 700; border: none; border-radius: 10px; background: #1f5f8b; color: #fff; font-family: inherit; }
+  .bar button.ghost { background: #c9d2da; color:#1c2530; }
+  .permit { display:block; width:100%; padding:14px; font-size:15px; font-weight:700; border:none; background:#b5443a; color:#fff; font-family:inherit; }
+
+  .modal { position: fixed; top:0;left:0;right:0;bottom:0; background: rgba(0,0,0,0.5); display: none; -webkit-box-align:center; align-items: center; -webkit-box-pack:center; justify-content: center; padding: 24px; z-index: 20; }
+  .modal.show { display:-webkit-box; display:flex; }
+  .modal-box { background: #fff; border-radius: 16px; padding: 20px; width: 100%; max-width: 320px; text-align: center; }
+  .modal-box p { font-size: 16px; font-weight:700; margin-bottom: 12px; }
+  .modal-box input { width: 100%; font-size: 22px; text-align: center; padding: 12px; border: 2px solid #1f5f8b; border-radius: 10px; font-family: inherit; }
+  .modal-box .mbtns { display:-webkit-box; display:flex; margin-top:14px; }
+  .modal-box .mbtns button { -webkit-box-flex:1; flex:1; margin:0 4px; padding:13px; font-size:15px; font-weight:700; border:none; border-radius:10px; font-family:inherit; }
+  .modal-box .ok { background:#1f5f8b; color:#fff; }
+  .modal-box .cancel { background:#eef1f4; color:#1c2530; }
+</style>
+</head>
+<body>
+  <div class="top" id="faceArea">
+    <div class="date" id="date">----/--/--</div>
+    <div class="face"><span class="label">面：</span><span id="faceVal">タップで入力</span></div>
+  </div>
+
+  <div class="total">
+    <div class="lab">傾き（参考値）</div>
+    <div class="totalval" id="totalVal">--</div>
+    <div class="judge" id="judge">計測準備中</div>
+  </div>
+
+  <div class="arrowwrap">
+    <div class="compass">
+      <div class="ring"></div>
+      <div class="lbl up">奥</div>
+      <div class="lbl dn">手前</div>
+      <div class="lbl lf">左</div>
+      <div class="lbl rt">右</div>
+      <div class="arrow" id="arrow">
+        <div class="arrowline" id="arrowline"></div>
+        <div class="arrowhead" id="arrowhead"></div>
+      </div>
+      <div class="center-dot"></div>
+    </div>
+    <div class="flowtext" id="flowText"></div>
+  </div>
+
+  <div class="axes">
+    <div class="axis">
+      <div class="alab">前後の傾き</div>
+      <div class="aval" id="betaVal">--</div>
+      <div class="adir" id="betaDir">—</div>
+    </div>
+    <div class="axis divider">
+      <div class="alab">左右の傾き</div>
+      <div class="aval" id="gammaVal">--</div>
+      <div class="adir" id="gammaDir">—</div>
+    </div>
+  </div>
+
+  <button class="permit" id="permitBtn" style="display:none;">タップしてセンサーを許可</button>
+
+  <div class="bar">
+    <button class="ghost" id="zeroBtn">水平でゼロ補正</button>
+    <button id="holdBtn">数値を固定</button>
+  </div>
+
+  <div class="modal" id="modal">
+    <div class="modal-box">
+      <p>面番号を入力</p>
+      <input type="text" id="faceInput" placeholder="例：9面 / A-3" autocomplete="off">
+      <div class="mbtns">
+        <button class="cancel" id="mCancel">キャンセル</button>
+        <button class="ok" id="mOk">決定</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+function z(n){ n = String(n); return n.length < 2 ? '0' + n : n; }
+var days = ['日','月','火','水','木','金','土'];
+function updateClock(){
+  var d = new Date();
+  document.getElementById('date').innerHTML =
+    d.getFullYear() + '/' + z(d.getMonth()+1) + '/' + z(d.getDate()) + ' (' + days[d.getDay()] + ') ' +
+    z(d.getHours()) + ':' + z(d.getMinutes());
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+var DEG = Math.PI / 180;
+var zeroBeta = 0, zeroGamma = 0;
+var sBeta = null, sGamma = null;   /* 平滑化 */
+var held = false;
+
+var totalVal = document.getElementById('totalVal');
+var judge = document.getElementById('judge');
+var betaVal = document.getElementById('betaVal');
+var betaDir = document.getElementById('betaDir');
+var gammaVal = document.getElementById('gammaVal');
+var gammaDir = document.getElementById('gammaDir');
+var arrow = document.getElementById('arrow');
+var arrowline = document.getElementById('arrowline');
+var arrowhead = document.getElementById('arrowhead');
+var flowText = document.getElementById('flowText');
+var permitBtn = document.getElementById('permitBtn');
+
+var lastBeta = null, lastGamma = null;
+
+function handleOrientation(e){
+  var beta = e.beta || 0;    /* 前後 */
+  var gamma = e.gamma || 0;  /* 左右 */
+  sBeta = (sBeta === null) ? beta : (sBeta * 0.8 + beta * 0.2);
+  sGamma = (sGamma === null) ? gamma : (sGamma * 0.8 + gamma * 0.2);
+  lastBeta = sBeta;
+  lastGamma = sGamma;
+  if (!held) render();
+}
+
+function render(){
+  if (lastBeta === null) return;
+  var b = lastBeta - zeroBeta;     /* +:手前が下がる(奥が高い) 端末による */
+  var g = lastGamma - zeroGamma;   /* +:右が下がる */
+
+  /* 合成傾斜角 */
+  var tb = Math.tan(b * DEG), tg = Math.tan(g * DEG);
+  var total = Math.atan(Math.sqrt(tb*tb + tg*tg)) / DEG;
+  var totalPct = Math.tan(total * DEG) * 100;
+  totalVal.innerHTML = total.toFixed(1) + '&deg; / ' + totalPct.toFixed(1) + '%';
+
+  /* 判定（標準1〜2% = 約0.6〜1.1度）*/
+  judge.className = 'judge';
+  if (total < 0.4) { judge.innerHTML = 'ほぼ水平（勾配不足の疑い）'; judge.className = 'judge flat'; }
+  else if (total >= 0.6) { judge.innerHTML = '傾きあり'; judge.className = 'judge ok'; }
+  else { judge.innerHTML = '傾きが小さめ'; judge.className = 'judge flat'; }
+
+  /* 前後 */
+  var ba = Math.abs(b);
+  betaVal.innerHTML = ba.toFixed(1) + '&deg;';
+  if (ba < 0.3) betaDir.innerHTML = '—';
+  else betaDir.innerHTML = (b > 0 ? '手前が低い' : '奥が低い');
+
+  /* 左右 */
+  var ga = Math.abs(g);
+  gammaVal.innerHTML = ga.toFixed(1) + '&deg;';
+  if (ga < 0.3) gammaDir.innerHTML = '—';
+  else gammaDir.innerHTML = (g > 0 ? '右が低い' : '左が低い');
+
+  /* 矢印：水が流れる「低い方向」を指す */
+  /* 画面座標：x右が+、y下が+。低い方向 = (右が低いなら右へ, 手前が低いなら下へ) */
+  var vx = (g > 0 ? ga : -ga);   /* 右が低い→右 */
+  var vy = (b > 0 ? ba : -ba);   /* 手前が低い→下(画面下=手前) */
+  var mag = Math.sqrt(vx*vx + vy*vy);
+  if (mag < 0.3) {
+    arrow.style.display = 'none';
+    flowText.innerHTML = '水の流れる向き：ほぼなし';
+  } else {
+    arrow.style.display = 'block';
+    var ang = Math.atan2(vy, vx) / DEG;      /* 0=右, 90=下 */
+    var rot = ang - 90;                       /* lineは上向き基準なので調整 */
+    /* 矢印の長さは傾きに応じて（最大は枠内）*/
+    var len = Math.min(mag * 18 + 30, 110);
+    arrowline.style.height = len + 'px';
+    arrowline.style.left = '-4px';
+    arrowline.style.top = '0px';
+    arrowhead.style.top = len + 'px';
+    arrow.style.WebkitTransform = 'rotate(' + rot + 'deg)';
+    arrow.style.transform = 'rotate(' + rot + 'deg)';
+
+    var dirName = '';
+    var nb = (b > 0 ? '手前' : '奥');
+    var ng = (g > 0 ? '右' : '左');
+    if (ba < 0.3) dirName = ng;
+    else if (ga < 0.3) dirName = nb;
+    else dirName = nb + ng;
+    flowText.innerHTML = '水の流れる向き：' + dirName;
+  }
+}
+
+function startSensor(){
+  if (window.addEventListener) window.addEventListener('deviceorientation', handleOrientation, false);
+  judge.innerHTML = '計測中…棒の上に置いてください';
+  permitBtn.style.display = 'none';
+}
+function initSensor(){
+  if (typeof DeviceOrientationEvent === 'undefined') {
+    totalVal.innerHTML = '非対応';
+    judge.innerHTML = 'この端末はセンサー非対応';
+    return;
+  }
+  if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+    permitBtn.style.display = 'block';
+    judge.innerHTML = 'センサー許可が必要です';
+    permitBtn.onclick = function(){
+      DeviceOrientationEvent.requestPermission().then(function(state){
+        if (state === 'granted') startSensor();
+        else judge.innerHTML = '許可されませんでした';
+      })['catch'](function(){ judge.innerHTML = '許可エラー'; });
+    };
+  } else {
+    startSensor();
+  }
+}
+initSensor();
+
+document.getElementById('zeroBtn').onclick = function(){
+  if (lastBeta !== null) {
+    zeroBeta = lastBeta; zeroGamma = lastGamma;
+    render();
+  }
+};
+var holdBtn = document.getElementById('holdBtn');
+holdBtn.onclick = function(){
+  held = !held;
+  holdBtn.innerHTML = held ? '固定中（解除）' : '数値を固定';
+  holdBtn.className = held ? '' : '';
+  holdBtn.style.background = held ? '#b5443a' : '#1f5f8b';
+};
+
+/* 面番号 */
+var modal = document.getElementById('modal');
+var faceInput = document.getElementById('faceInput');
+document.getElementById('faceArea').onclick = function(){
+  var cur = document.getElementById('faceVal').innerHTML;
+  faceInput.value = (cur === 'タップで入力') ? '' : cur;
+  modal.className = 'modal show';
+  setTimeout(function(){ faceInput.focus(); }, 100);
+};
+document.getElementById('mOk').onclick = function(){
+  var v = faceInput.value;
+  if (v) v = v.replace(/^\s+|\s+$/g, '');
+  document.getElementById('faceVal').innerHTML = v || 'タップで入力';
+  modal.className = 'modal';
+};
+document.getElementById('mCancel').onclick = function(){ modal.className = 'modal'; };
+faceInput.onkeydown = function(e){ if (e.keyCode === 13) document.getElementById('mOk').onclick(); };
+</script>
+</body>
+</html>
