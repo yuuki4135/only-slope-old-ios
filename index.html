@@ -6,7 +6,7 @@
 <title>傾斜計</title>
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin:0; padding:0; }
-  html, body { height: 100%; }
+  html, body { height: 100%; -webkit-text-size-adjust: 100%; }
   body {
     font-family: -apple-system, "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif;
     background: #fff; color: #000;
@@ -21,7 +21,10 @@
   .facebtn { width:54px; height:54px; flex:0 0 auto; -webkit-box-flex:0; font-size:30px; font-weight:800; border:none; border-radius:12px; background:#1f5f8b; color:#fff; font-family:inherit; line-height:1; }
   .facebtn:active { opacity:0.7; }
   .facetap { -webkit-box-flex:1; flex:1; margin:0 10px; }
-  .face { font-size: clamp(58px, 17vw, 86px); font-weight: 900; line-height:1.0; color: #b5443a; }
+  .face { font-size: 64px; font-weight: 900; line-height:1.0; color: #b5443a; }
+  @supports (font-size: clamp(58px, 17vw, 86px)) {
+    .face { font-size: clamp(58px, 17vw, 86px); }
+  }
   .face .label { font-size: 22px; color:#555; font-weight:700; vertical-align:middle; }
 
   /* 合成傾斜（大きく） */
